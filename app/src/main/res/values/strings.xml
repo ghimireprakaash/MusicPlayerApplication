@@ -1,5 +1,16 @@
 <resources>
-    <string name="app_name">MusicPlayerApp</string>
+    <string name="app_name">Music Player</string>
 
     <string name="splash_icon">splash_icon</string>
+
+    <string name="artist_name">Artist Name</string>
+    <string name="song_title">Song Title</string>
+    <string name="now_playing">Now Playing</string>
+    <string name="shuffle">shuffle</string>
+    <string name="previous">previous</string>
+    <string name="play">play</string>
+    <string name="pause">pause</string>
+    <string name="next">next</string>
+    <string name="loop">loop</string>
+    <string name="backward">backward</string>
 </resources>

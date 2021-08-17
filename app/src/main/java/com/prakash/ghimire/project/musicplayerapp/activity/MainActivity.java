@@ -1,4 +1,4 @@
-package com.prakash.ghimire.project.musicplayerapp;
+package com.prakash.ghimire.project.musicplayerapp.activity;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -6,11 +6,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -19,19 +20,23 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
-
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.prakash.ghimire.project.musicplayerapp.R;
+import com.prakash.ghimire.project.musicplayerapp.adapters.MusicAdapter;
 import com.prakash.ghimire.project.musicplayerapp.model.Music;
-
 import java.util.ArrayList;
+import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MusicAdapter.ViewHolder.OnItemClickListener {
     private static final String TAG = "MainActivity";
 
     private static final int REQUEST_CODE = 1;
-    Toolbar toolbar;
-    RecyclerView musicListRecyclerView;
 
+    Toolbar toolbar;
+    private RecyclerView musicListRecyclerView;
+
+    List<Music> musicList;
+    private MusicAdapter adapter;
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     @Override
@@ -53,15 +58,16 @@ public class MainActivity extends AppCompatActivity {
         musicListRecyclerView = findViewById(R.id.musicRecyclerView);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.Q)
+
+    @SuppressLint("NewApi")
     private void checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                         REQUEST_CODE);
             } else {
-                getAllMusicFiles(this);
+                setupRecyclerAdapter();
             }
         }
     }
@@ -72,32 +78,33 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         if (requestCode == REQUEST_CODE){
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
                 //Do something...
-                getAllMusicFiles(this);
+                setupRecyclerAdapter();
 
             } else {
-                MaterialAlertDialogBuilder dialogBuilder = new MaterialAlertDialogBuilder(this);
-                dialogBuilder.setTitle("Requires Permission");
-                dialogBuilder.setMessage("To read and write external storage this application requires the permissions needed to" +
-                        " function properly.");
-                dialogBuilder.setPositiveButton("Allow", (dialog, which) -> {
-
-                });
-
-                dialogBuilder.setNegativeButton("Deny", (dialog, which) -> dialogBuilder.setOnDismissListener(DialogInterface::dismiss));
-
-                dialogBuilder.create().show();
+                dialogBuilder();
             }
         }
     }
 
+    private void dialogBuilder(){
+        MaterialAlertDialogBuilder dialogBuilder = new MaterialAlertDialogBuilder(this);
+        dialogBuilder.setTitle("Requires Permission");
+        dialogBuilder.setMessage("To read and write external storage this application requires the permissions needed to"+
+                " function properly. Please restart the app and grant access to the storage permission.Or, go to app"+
+                " settings and enable storage permission.");
 
-    @RequiresApi(api = Build.VERSION_CODES.Q)
+        dialogBuilder.setNegativeButton("Close", (dialog, which) -> finish());
+
+        dialogBuilder.create().show();
+    }
+
     private ArrayList<Music> getAllMusicFiles(Context context){
-        ArrayList<Music> musicList = new ArrayList<>();
+        ArrayList<Music> musicLists = new ArrayList<>();
+
         Uri musicUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        String[] projection = {
+        @SuppressLint("InlinedApi") String[] projection = {
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ARTIST,
@@ -119,15 +126,46 @@ public class MainActivity extends AppCompatActivity {
 
                 Music musicModel = new Music(album, title, artist, duration, path);
                 Log.d(TAG, "path: "+path+"\n"+
+                        "album: "+album+"\n"+
                         "title: "+title+"\n"+
                         "artist: "+artist+"\n"+
                         "duration: "+duration);
-                musicList.add(musicModel);
+                musicLists.add(musicModel);
             }
 
             cursor.close();
         }
 
-        return musicList;
+        return musicLists;
+    }
+
+
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    private void setupRecyclerAdapter(){
+        musicListRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        musicListRecyclerView.setHasFixedSize(true);
+
+
+        musicList = getAllMusicFiles(this);
+
+        adapter = new MusicAdapter(this, musicList, this);
+        musicListRecyclerView.setAdapter(adapter);
+    }
+
+    @Override
+    public void OnItemClick(int position) {
+        String artistName = musicList.get(position).getArtist();
+        String albumArt = musicList.get(position).getAlbum();
+        String songTitle = musicList.get(position).getTitle();
+        String path = musicList.get(position).getPath();
+
+        Intent intent = new Intent(MainActivity.this, MusicPlayerActivity.class);
+        intent.putExtra("artist", artistName);
+        intent.putExtra("album", albumArt);
+        intent.putExtra("title", songTitle);
+        intent.putExtra("path", path);
+        intent.putExtra("position", position);
+
+        startActivity(intent);
     }
 }
